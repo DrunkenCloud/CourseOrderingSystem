@@ -45,10 +45,12 @@ export default function SessionsPage() {
   const [courses, setCourses] = useState<Course[]>([])
   const [faculty, setFaculty] = useState<Faculty[]>([])
   const [showForm, setShowForm] = useState(false)
+  const [editingSession, setEditingSession] = useState<Session | null>(null)
   const [selectedSession, setSelectedSession] = useState<string | null>(null)
   const [showCourseModal, setShowCourseModal] = useState(false)
   const [showFacultyModal, setShowFacultyModal] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [deleting, setDeleting] = useState<string | null>(null)
   const [formData, setFormData] = useState({
     name: '',
     details: '',
@@ -109,8 +111,13 @@ export default function SessionsPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     try {
-      const response = await fetch('/api/admin/sessions', {
-        method: 'POST',
+      const url = editingSession 
+        ? `/api/admin/sessions/${editingSession.id}`
+        : '/api/admin/sessions'
+      const method = editingSession ? 'PUT' : 'POST'
+      
+      const response = await fetch(url, {
+        method,
         headers: {
           'Content-Type': 'application/json',
         },
@@ -118,21 +125,60 @@ export default function SessionsPage() {
       })
 
       if (response.ok) {
-        setFormData({
-          name: '',
-          details: '',
-          isActive: true,
-          maxCourses: '5',
-          maxElectives: '2'
-        })
-        setShowForm(false)
+        resetForm()
         fetchData()
       } else {
         const error = await response.json()
-        alert(error.error || 'Failed to create session')
+        alert(error.error || `Failed to ${editingSession ? 'update' : 'create'} session`)
       }
     } catch (error) {
-      alert('Failed to create session')
+      alert(`Failed to ${editingSession ? 'update' : 'create'} session`)
+    }
+  }
+
+  const resetForm = () => {
+    setFormData({
+      name: '',
+      details: '',
+      isActive: true,
+      maxCourses: '5',
+      maxElectives: '2'
+    })
+    setShowForm(false)
+    setEditingSession(null)
+  }
+
+  const handleEdit = (session: Session) => {
+    setFormData({
+      name: session.name,
+      details: session.details || '',
+      isActive: session.isActive,
+      maxCourses: session.maxCourses.toString(),
+      maxElectives: session.maxElectives.toString()
+    })
+    setEditingSession(session)
+    setShowForm(true)
+  }
+
+  const handleDelete = async (sessionId: string) => {
+    if (!confirm('Are you sure you want to delete this session? This action cannot be undone.')) return
+    
+    setDeleting(sessionId)
+    try {
+      const response = await fetch(`/api/admin/sessions/${sessionId}`, {
+        method: 'DELETE'
+      })
+
+      if (response.ok) {
+        fetchData()
+      } else {
+        const error = await response.json()
+        alert(error.error || 'Failed to delete session')
+      }
+    } catch (error) {
+      alert('Failed to delete session')
+    } finally {
+      setDeleting(null)
     }
   }
 
@@ -293,7 +339,9 @@ export default function SessionsPage() {
       <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         {showForm && (
           <div className="bg-white shadow rounded-lg p-6 mb-6">
-            <h2 className="text-lg font-medium mb-4">Create New Session</h2>
+            <h2 className="text-lg font-medium mb-4">
+              {editingSession ? 'Edit Session' : 'Create New Session'}
+            </h2>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700">Session Name</label>
@@ -357,7 +405,7 @@ export default function SessionsPage() {
                   type="submit"
                   className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
                 >
-                  Create Session
+                  {editingSession ? 'Update Session' : 'Create Session'}
                 </button>
               </div>
             </form>
@@ -388,7 +436,7 @@ export default function SessionsPage() {
                       </span>
                     </div>
                   </div>
-                  <div className="flex space-x-2">
+                  <div className="flex flex-wrap gap-2">
                     <button
                       onClick={() => {
                         setSelectedSession(session.id)
@@ -406,6 +454,19 @@ export default function SessionsPage() {
                       className="bg-purple-600 text-white px-3 py-1 rounded text-sm hover:bg-purple-700"
                     >
                       Add Faculty
+                    </button>
+                    <button
+                      onClick={() => handleEdit(session)}
+                      className="bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => handleDelete(session.id)}
+                      disabled={deleting === session.id}
+                      className="bg-red-600 text-white px-3 py-1 rounded text-sm hover:bg-red-700 disabled:bg-gray-400"
+                    >
+                      {deleting === session.id ? 'Deleting...' : 'Delete'}
                     </button>
                   </div>
                 </div>
