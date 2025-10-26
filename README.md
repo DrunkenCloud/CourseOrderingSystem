@@ -22,7 +22,7 @@ A comprehensive faculty course preference and elective proposal management syste
 - **Frontend**: Next.js 14, React, TypeScript, Tailwind CSS
 - **Backend**: Next.js API Routes
 - **Database**: PostgreSQL with Prisma ORM
-- **Authentication**: Custom authentication system
+- **Authentication**: Custom authentication with bcrypt and localStorage
 - **Deployment**: Vercel-ready with automated builds
 
 ## Quick Start
@@ -119,8 +119,6 @@ The system uses the following main entities:
 
 ```bash
 DATABASE_URL="postgresql://..."
-NEXTAUTH_SECRET="your-secret-key"
-NEXTAUTH_URL="http://localhost:3000"
 ```
 
 ## Scripts

@@ -31,18 +31,22 @@ Choose one of these PostgreSQL providers:
 1. Push your code to GitHub
 2. Go to [vercel.com](https://vercel.com)
 3. Import your GitHub repository
-4. Configure environment variables:
+4. Vercel will auto-detect it's a Next.js app
+5. Configure environment variables in Vercel dashboard:
    ```
    DATABASE_URL=your_postgresql_connection_string
-   NEXTAUTH_SECRET=your_random_secret_key
-   NEXTAUTH_URL=https://your-app-name.vercel.app
    ```
+6. Deploy (Vercel will automatically run the build process)
 
-### Step 3: Database Migration
-After deployment, the build process will automatically:
-1. Generate Prisma client
-2. Run database migrations
-3. Build the Next.js application
+### Step 3: Automatic Build Process
+Vercel will automatically:
+1. Install dependencies (`npm install` triggers `postinstall` → `prisma generate`)
+2. Run build command (`prisma generate && next build`)
+3. Deploy the application
+
+For production database setup, you may need to run migrations manually:
+- Use your database provider's migration tools, or
+- Run `npx prisma migrate deploy` with your production DATABASE_URL
 
 ### Step 4: Seed Database (Optional)
 To seed your database with initial data:
@@ -55,8 +59,6 @@ To seed your database with initial data:
 ### Environment Variables Required
 ```bash
 DATABASE_URL="postgresql://..."
-NEXTAUTH_SECRET="random-secret-key"
-NEXTAUTH_URL="https://your-domain.vercel.app"
 ```
 
 ### Build Commands
@@ -69,12 +71,14 @@ The following commands are configured in package.json:
 
 #### Build Failures
 1. **Prisma Generate Issues**: Ensure `prisma generate` runs before build
-2. **Database Connection**: Verify DATABASE_URL is correct
-3. **Migration Issues**: Check if database schema matches Prisma schema
+2. **Database Connection**: Verify DATABASE_URL is correct and accessible from Vercel
+3. **Migration Issues**: Run `npx prisma migrate deploy` manually if needed
+4. **Runtime Errors**: Remove `vercel.json` if present (Next.js 13+ auto-configures)
+5. **Package Manager**: Ensure build scripts use `npm` not `pnpm` for Vercel compatibility
 
 #### Runtime Issues
 1. **Database Connection**: Ensure connection string includes SSL parameters
-2. **Environment Variables**: Verify all required env vars are set in Vercel
+2. **Authentication**: Uses custom localStorage-based auth (no external auth service needed)
 3. **Prisma Client**: Check if client is properly generated
 
 ### Local Development
