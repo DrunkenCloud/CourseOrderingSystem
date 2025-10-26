@@ -40,11 +40,29 @@ interface Session {
   isActive: boolean
 }
 
+interface Course {
+  id: string
+  courseName: string
+  courseCode: string
+}
+
+interface ElectiveProposal {
+  id: string
+  courseName: string
+  courseCode?: string
+  description: string
+  credits: number
+  status: string
+  createdAt: string
+  course?: Course
+}
+
 interface SessionFaculty {
   id: string
   session: Session
   faculty: Faculty
   courseChoices: CourseChoice[]
+  electiveProposals: ElectiveProposal[]
 }
 
 export default function AdminPreferencesPage() {
@@ -114,6 +132,15 @@ export default function AdminPreferencesPage() {
     }
   }
 
+  const getElectiveStatusColor = (status: string) => {
+    switch (status) {
+      case 'PENDING': return 'bg-yellow-100 text-yellow-800'
+      case 'APPROVED': return 'bg-green-100 text-green-800'
+      case 'REJECTED': return 'bg-red-100 text-red-800'
+      default: return 'bg-gray-100 text-gray-800'
+    }
+  }
+
   const groupedBySession = sessionFaculties.reduce((acc, sf) => {
     const sessionId = sf.session.id
     if (!acc[sessionId]) {
@@ -174,6 +201,14 @@ export default function AdminPreferencesPage() {
                       {session.details && (
                         <p className="text-sm text-gray-500">{session.details}</p>
                       )}
+                      <div className="flex items-center space-x-4 mt-2 text-xs text-gray-500">
+                        <span>
+                          {faculties.reduce((sum, sf) => sum + sf.courseChoices.length, 0)} course preferences
+                        </span>
+                        <span>
+                          {faculties.reduce((sum, sf) => sum + sf.electiveProposals.length, 0)} elective proposals
+                        </span>
+                      </div>
                     </div>
                     <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
                       session.isActive 
@@ -195,29 +230,76 @@ export default function AdminPreferencesPage() {
                           <p className="text-xs text-gray-400">{sessionFaculty.faculty.position.name}</p>
                         </div>
                         
-                        <div>
-                          <h4 className="text-xs font-medium text-gray-700 mb-2">
-                            Course Preferences ({sessionFaculty.courseChoices.length})
-                          </h4>
-                          {sessionFaculty.courseChoices.length > 0 ? (
-                            <div className="space-y-1">
-                              {sessionFaculty.courseChoices.map((choice) => (
-                                <div key={choice.id} className="flex items-center text-xs">
-                                  <span className="inline-flex items-center justify-center w-5 h-5 bg-blue-100 text-blue-800 rounded-full mr-2 font-medium">
-                                    {choice.preferenceOrder}
-                                  </span>
-                                  <div className="flex-1">
-                                    <span className="font-medium">{choice.sessionCourse.course.courseName}</span>
-                                    <div className="text-gray-500">
-                                      {choice.sessionCourse.course.courseCode} • {choice.sessionCourse.course.credits} credits
+                        <div className="space-y-4">
+                          {/* Course Preferences */}
+                          <div>
+                            <h4 className="text-xs font-medium text-gray-700 mb-2">
+                              Course Preferences ({sessionFaculty.courseChoices.length})
+                            </h4>
+                            {sessionFaculty.courseChoices.length > 0 ? (
+                              <div className="space-y-1">
+                                {sessionFaculty.courseChoices.map((choice) => (
+                                  <div key={choice.id} className="flex items-center text-xs">
+                                    <span className="inline-flex items-center justify-center w-5 h-5 bg-blue-100 text-blue-800 rounded-full mr-2 font-medium">
+                                      {choice.preferenceOrder}
+                                    </span>
+                                    <div className="flex-1">
+                                      <span className="font-medium">{choice.sessionCourse.course.courseName}</span>
+                                      <div className="text-gray-500">
+                                        {choice.sessionCourse.course.courseCode} • {choice.sessionCourse.course.credits} credits
+                                      </div>
                                     </div>
                                   </div>
-                                </div>
-                              ))}
-                            </div>
-                          ) : (
-                            <div className="text-xs text-gray-500 italic">No preferences submitted</div>
-                          )}
+                                ))}
+                              </div>
+                            ) : (
+                              <div className="text-xs text-gray-500 italic">No preferences submitted</div>
+                            )}
+                          </div>
+
+                          {/* Elective Proposals */}
+                          <div>
+                            <h4 className="text-xs font-medium text-gray-700 mb-2">
+                              Elective Proposals ({sessionFaculty.electiveProposals.length})
+                            </h4>
+                            {sessionFaculty.electiveProposals.length > 0 ? (
+                              <div className="space-y-2">
+                                {sessionFaculty.electiveProposals.map((elective) => (
+                                  <div key={elective.id} className="bg-gray-50 rounded p-2">
+                                    <div className="flex items-center justify-between mb-1">
+                                      <span className="text-xs font-medium text-gray-900">{elective.courseName}</span>
+                                      <span className={`inline-flex px-1 py-0.5 text-xs font-semibold rounded ${getElectiveStatusColor(elective.status)}`}>
+                                        {elective.status}
+                                      </span>
+                                    </div>
+                                    {elective.courseCode && (
+                                      <div className="text-xs text-gray-600 mb-1">
+                                        Code: {elective.courseCode}
+                                      </div>
+                                    )}
+                                    <div className="text-xs text-gray-500 mb-1">
+                                      {elective.credits} credits
+                                    </div>
+                                    <div className="text-xs text-gray-500" style={{ 
+                                      display: '-webkit-box',
+                                      WebkitLineClamp: 2,
+                                      WebkitBoxOrient: 'vertical',
+                                      overflow: 'hidden'
+                                    }}>
+                                      {elective.description}
+                                    </div>
+                                    {elective.status === 'APPROVED' && elective.course && (
+                                      <div className="text-xs text-green-600 mt-1">
+                                        ✓ Added to catalog
+                                      </div>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <div className="text-xs text-gray-500 italic">No electives proposed</div>
+                            )}
+                          </div>
                         </div>
                       </div>
                     ))}

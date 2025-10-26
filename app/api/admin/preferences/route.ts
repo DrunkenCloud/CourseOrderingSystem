@@ -43,7 +43,30 @@ export async function GET(request: NextRequest) {
       ]
     })
     
-    return NextResponse.json(sessionFaculties)
+    // Get elective proposals for each faculty in each session
+    const sessionFacultiesWithElectives = await Promise.all(
+      sessionFaculties.map(async (sessionFaculty) => {
+        const electiveProposals = await prisma.electiveCourse.findMany({
+          where: {
+            facultyId: sessionFaculty.faculty.id,
+            sessionId: sessionFaculty.session.id
+          },
+          include: {
+            course: true
+          },
+          orderBy: {
+            createdAt: 'desc'
+          }
+        })
+        
+        return {
+          ...sessionFaculty,
+          electiveProposals
+        }
+      })
+    )
+    
+    return NextResponse.json(sessionFacultiesWithElectives)
   } catch (error) {
     return NextResponse.json({ error: 'Failed to fetch preferences' }, { status: 500 })
   }
