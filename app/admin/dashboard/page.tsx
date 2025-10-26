@@ -212,9 +212,12 @@ export default function AdminDashboard() {
               </div>
               <div className="bg-gray-50 px-5 py-3">
                 <div className="text-sm">
-                  <a href="#" className="font-medium text-red-700 hover:text-red-900">
+                  <button
+                    onClick={() => router.push('/admin/electives')}
+                    className="font-medium text-red-700 hover:text-red-900"
+                  >
                     Approve/reject electives
-                  </a>
+                  </button>
                 </div>
               </div>
             </div>

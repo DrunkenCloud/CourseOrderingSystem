@@ -116,9 +116,12 @@ export default function FacultyDashboard() {
               </div>
               <div className="bg-gray-50 px-5 py-3">
                 <div className="text-sm">
-                  <a href="#" className="font-medium text-green-700 hover:text-green-900">
+                  <button
+                    onClick={() => router.push('/faculty/electives')}
+                    className="font-medium text-green-700 hover:text-green-900"
+                  >
                     Submit elective proposal →
-                  </a>
+                  </button>
                 </div>
               </div>
             </div>
