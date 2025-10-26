@@ -5,19 +5,26 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const facultyId = searchParams.get('facultyId')
+    const sessionId = searchParams.get('sessionId')
     
     if (!facultyId) {
       return NextResponse.json({ error: 'Faculty ID is required' }, { status: 400 })
     }
     
+    let whereClause: any = { facultyId }
+    if (sessionId) {
+      whereClause.sessionId = sessionId
+    }
+    
     const electives = await prisma.electiveCourse.findMany({
-      where: { facultyId },
+      where: whereClause,
       include: {
         faculty: {
           include: {
             position: true
           }
         },
+        session: true,
         course: true
       },
       orderBy: { createdAt: 'desc' }
@@ -31,40 +38,40 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const { facultyId, courseName, courseCode, description, credits } = await request.json()
+    const { facultyId, sessionId, courseName, description, credits } = await request.json()
     
-    if (!facultyId || !courseName || !courseCode || !description || !credits) {
+    if (!facultyId || !sessionId || !courseName || !description || !credits) {
       return NextResponse.json({ error: 'All fields are required' }, { status: 400 })
     }
     
-    // Check if course code already exists in electives for this faculty
-    const existingElective = await prisma.electiveCourse.findUnique({
+    // Get session to check maxElectives limit
+    const session = await prisma.session.findUnique({
+      where: { id: sessionId }
+    })
+    
+    if (!session) {
+      return NextResponse.json({ error: 'Session not found' }, { status: 404 })
+    }
+    
+    // Check if faculty has reached the maximum electives limit for this session
+    const existingElectives = await prisma.electiveCourse.count({
       where: {
-        facultyId_courseCode: {
-          facultyId,
-          courseCode
-        }
+        facultyId,
+        sessionId
       }
     })
     
-    if (existingElective) {
-      return NextResponse.json({ error: 'You have already proposed an elective with this course code' }, { status: 400 })
-    }
-    
-    // Check if course code exists in main courses
-    const existingCourse = await prisma.course.findUnique({
-      where: { courseCode }
-    })
-    
-    if (existingCourse) {
-      return NextResponse.json({ error: 'A course with this code already exists in the system' }, { status: 400 })
+    if (existingElectives >= session.maxElectives) {
+      return NextResponse.json({ 
+        error: `You can only propose up to ${session.maxElectives} electives for this session` 
+      }, { status: 400 })
     }
     
     const elective = await prisma.electiveCourse.create({
       data: {
         facultyId,
+        sessionId,
         courseName,
-        courseCode,
         description,
         credits: parseInt(credits),
         status: 'PENDING'
@@ -74,7 +81,8 @@ export async function POST(request: NextRequest) {
           include: {
             position: true
           }
-        }
+        },
+        session: true
       }
     })
     

@@ -35,6 +35,7 @@ interface Session {
   details?: string
   isActive: boolean
   maxCourses: number
+  maxElectives: number
   sessionCourses: SessionCourse[]
   sessionFaculties: SessionFaculty[]
 }
@@ -52,7 +53,8 @@ export default function SessionsPage() {
     name: '',
     details: '',
     isActive: true,
-    maxCourses: '5'
+    maxCourses: '5',
+    maxElectives: '2'
   })
   const [selectedCourses, setSelectedCourses] = useState<string[]>([])
   const [selectedFaculty, setSelectedFaculty] = useState<string[]>([])
@@ -120,7 +122,8 @@ export default function SessionsPage() {
           name: '',
           details: '',
           isActive: true,
-          maxCourses: '5'
+          maxCourses: '5',
+          maxElectives: '2'
         })
         setShowForm(false)
         fetchData()
@@ -311,7 +314,7 @@ export default function SessionsPage() {
                   rows={3}
                 />
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Maximum Courses per Faculty</label>
                   <input
@@ -321,6 +324,18 @@ export default function SessionsPage() {
                     max="20"
                     value={formData.maxCourses}
                     onChange={(e) => setFormData({ ...formData, maxCourses: e.target.value })}
+                    className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Maximum Electives per Faculty</label>
+                  <input
+                    type="number"
+                    required
+                    min="0"
+                    max="10"
+                    value={formData.maxElectives}
+                    onChange={(e) => setFormData({ ...formData, maxElectives: e.target.value })}
                     className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
                   />
                 </div>
@@ -367,6 +382,9 @@ export default function SessionsPage() {
                       </span>
                       <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
                         Max {session.maxCourses} courses
+                      </span>
+                      <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-purple-100 text-purple-800">
+                        Max {session.maxElectives} electives
                       </span>
                     </div>
                   </div>

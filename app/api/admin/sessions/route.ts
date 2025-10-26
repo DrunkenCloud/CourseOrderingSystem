@@ -30,14 +30,15 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
-    const { name, details, isActive, maxCourses } = await request.json()
+    const { name, details, isActive, maxCourses, maxElectives } = await request.json()
     
     const session = await prisma.session.create({
       data: {
         name,
         details,
         isActive: isActive !== undefined ? isActive : true,
-        maxCourses: maxCourses ? parseInt(maxCourses) : 5
+        maxCourses: maxCourses ? parseInt(maxCourses) : 5,
+        maxElectives: maxElectives ? parseInt(maxElectives) : 2
       }
     })
     

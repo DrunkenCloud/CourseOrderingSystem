@@ -6,11 +6,15 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
-    const { status, adminNotes } = await request.json()
+    const { status, courseCode } = await request.json()
     const electiveId = params.id
     
     if (!['APPROVED', 'REJECTED'].includes(status)) {
       return NextResponse.json({ error: 'Invalid status' }, { status: 400 })
+    }
+    
+    if (status === 'APPROVED' && !courseCode) {
+      return NextResponse.json({ error: 'Course code is required for approval' }, { status: 400 })
     }
     
     const existingElective = await prisma.electiveCourse.findUnique({
@@ -23,10 +27,12 @@ export async function PUT(
     
     // If approving, create the course in the main courses table
     let courseId = null
+    let assignedCourseCode = null
+    
     if (status === 'APPROVED') {
       // Check if course code already exists
       const existingCourse = await prisma.course.findUnique({
-        where: { courseCode: existingElective.courseCode }
+        where: { courseCode }
       })
       
       if (existingCourse) {
@@ -36,7 +42,7 @@ export async function PUT(
       const newCourse = await prisma.course.create({
         data: {
           courseName: existingElective.courseName,
-          courseCode: existingElective.courseCode,
+          courseCode,
           details: existingElective.description,
           credits: existingElective.credits,
           isElective: true
@@ -44,12 +50,14 @@ export async function PUT(
       })
       
       courseId = newCourse.id
+      assignedCourseCode = courseCode
     }
     
     const elective = await prisma.electiveCourse.update({
       where: { id: electiveId },
       data: {
         status,
+        courseCode: assignedCourseCode,
         courseId,
         updatedAt: new Date()
       },
@@ -59,6 +67,7 @@ export async function PUT(
             position: true
           }
         },
+        session: true,
         course: true
       }
     })

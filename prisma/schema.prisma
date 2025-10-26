@@ -17,17 +17,19 @@ model Admin {
 }
 
 model Session {
-  id         String   @id @default(uuid())
-  name       String
-  details    String?
-  isActive   Boolean  @default(true)
-  maxCourses Int      @default(5) // Maximum number of courses faculty can select
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  id              String   @id @default(uuid())
+  name            String
+  details         String?
+  isActive        Boolean  @default(true)
+  maxCourses      Int      @default(5) // Maximum number of courses faculty can select
+  maxElectives    Int      @default(1) // Maximum number of electives faculty can propose per session
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
   // Relations
   sessionCourses   SessionCourse[]
   sessionFaculties SessionFaculty[]
+  electiveCourses  ElectiveCourse[]
 }
 
 model Course {
@@ -128,9 +130,10 @@ model CourseChoice {
 model ElectiveCourse {
   id          String   @id @default(uuid())
   facultyId   String
+  sessionId   String
   courseId    String? // Optional: link to existing course if approved
   courseName  String
-  courseCode  String
+  courseCode  String? // Optional: assigned by admin upon approval
   description String
   credits     Int
   status      String   @default("PENDING") // PENDING, APPROVED, REJECTED
@@ -139,7 +142,6 @@ model ElectiveCourse {
 
   // Relations
   faculty Faculty @relation(fields: [facultyId], references: [id], onDelete: Cascade)
+  session Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
   course  Course? @relation(fields: [courseId], references: [id])
-
-  @@unique([facultyId, courseCode])
 }

@@ -6,7 +6,7 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
-    const { courseName, courseCode, description, credits } = await request.json()
+    const { courseName, description, credits } = await request.json()
     const electiveId = params.id
     
     // Get the elective to check ownership and status
@@ -22,34 +22,10 @@ export async function PUT(
       return NextResponse.json({ error: 'Cannot edit elective that has been reviewed' }, { status: 400 })
     }
     
-    // Check if new course code conflicts (if changed)
-    if (courseCode !== existingElective.courseCode) {
-      const existingCourse = await prisma.course.findUnique({
-        where: { courseCode }
-      })
-      
-      if (existingCourse) {
-        return NextResponse.json({ error: 'A course with this code already exists' }, { status: 400 })
-      }
-      
-      const existingElectiveCode = await prisma.electiveCourse.findFirst({
-        where: {
-          courseCode,
-          facultyId: existingElective.facultyId,
-          id: { not: electiveId }
-        }
-      })
-      
-      if (existingElectiveCode) {
-        return NextResponse.json({ error: 'You have already proposed an elective with this course code' }, { status: 400 })
-      }
-    }
-    
     const elective = await prisma.electiveCourse.update({
       where: { id: electiveId },
       data: {
         courseName,
-        courseCode,
         description,
         credits: parseInt(credits)
       },
@@ -58,7 +34,8 @@ export async function PUT(
           include: {
             position: true
           }
-        }
+        },
+        session: true
       }
     })
     

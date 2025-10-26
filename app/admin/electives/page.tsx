@@ -21,16 +21,24 @@ interface Course {
   courseCode: string
 }
 
+interface Session {
+  id: string
+  name: string
+  maxElectives: number
+  isActive: boolean
+}
+
 interface ElectiveCourse {
   id: string
   courseName: string
-  courseCode: string
+  courseCode?: string
   description: string
   credits: number
   status: string
   createdAt: string
   updatedAt: string
   faculty: Faculty
+  session: Session
   course?: Course
 }
 
@@ -40,6 +48,7 @@ export default function AdminElectivesPage() {
   const [statusFilter, setStatusFilter] = useState<string>('ALL')
   const [loading, setLoading] = useState(true)
   const [updating, setUpdating] = useState<string | null>(null)
+  const [courseCodeInput, setCourseCodeInput] = useState<{ [key: string]: string }>({})
   const router = useRouter()
 
   useEffect(() => {
@@ -81,19 +90,37 @@ export default function AdminElectivesPage() {
   }
 
   const handleStatusUpdate = async (electiveId: string, newStatus: string) => {
+    if (newStatus === 'APPROVED') {
+      const courseCode = courseCodeInput[electiveId]
+      if (!courseCode) {
+        alert('Please enter a course code for approval')
+        return
+      }
+    }
+    
     if (!confirm(`Are you sure you want to ${newStatus.toLowerCase()} this elective proposal?`)) return
     
     setUpdating(electiveId)
     try {
+      const body: any = { status: newStatus }
+      if (newStatus === 'APPROVED') {
+        body.courseCode = courseCodeInput[electiveId]
+      }
+      
       const response = await fetch(`/api/admin/electives/${electiveId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ status: newStatus }),
+        body: JSON.stringify(body),
       })
 
       if (response.ok) {
+        setCourseCodeInput(prev => {
+          const newState = { ...prev }
+          delete newState[electiveId]
+          return newState
+        })
         fetchElectives()
       } else {
         const error = await response.json()
@@ -202,11 +229,17 @@ export default function AdminElectivesPage() {
                     <div className="flex-1">
                       <div className="flex items-center space-x-2 mb-2">
                         <h3 className="text-lg font-medium text-gray-900">{elective.courseName}</h3>
-                        <span className="text-sm text-gray-500">({elective.courseCode})</span>
+                        {elective.courseCode && (
+                          <span className="text-sm text-gray-500">({elective.courseCode})</span>
+                        )}
                         <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(elective.status)}`}>
                           {elective.status}
                         </span>
                         <span className="text-xs text-gray-500">{elective.credits} credits</span>
+                      </div>
+                      
+                      <div className="text-sm text-gray-500 mb-2">
+                        <strong>Session:</strong> {elective.session.name}
                       </div>
                       
                       <div className="mb-3">
@@ -237,9 +270,19 @@ export default function AdminElectivesPage() {
                       )}
                     </div>
                     
-                    <div className="flex space-x-2 ml-4">
+                    <div className="flex flex-col space-y-2 ml-4">
                       {elective.status === 'PENDING' && (
-                        <>
+                        <div className="flex items-center space-x-2">
+                          <input
+                            type="text"
+                            placeholder="Course Code (e.g., CS501)"
+                            value={courseCodeInput[elective.id] || ''}
+                            onChange={(e) => setCourseCodeInput(prev => ({
+                              ...prev,
+                              [elective.id]: e.target.value.toUpperCase()
+                            }))}
+                            className="text-xs border rounded px-2 py-1 w-24"
+                          />
                           <button
                             onClick={() => handleStatusUpdate(elective.id, 'APPROVED')}
                             disabled={updating === elective.id}
@@ -254,16 +297,28 @@ export default function AdminElectivesPage() {
                           >
                             {updating === elective.id ? 'Processing...' : 'Reject'}
                           </button>
-                        </>
+                        </div>
                       )}
                       {elective.status === 'REJECTED' && (
-                        <button
-                          onClick={() => handleStatusUpdate(elective.id, 'APPROVED')}
-                          disabled={updating === elective.id}
-                          className="bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700 disabled:bg-gray-400"
-                        >
-                          {updating === elective.id ? 'Processing...' : 'Approve'}
-                        </button>
+                        <div className="flex items-center space-x-2">
+                          <input
+                            type="text"
+                            placeholder="Course Code (e.g., CS501)"
+                            value={courseCodeInput[elective.id] || ''}
+                            onChange={(e) => setCourseCodeInput(prev => ({
+                              ...prev,
+                              [elective.id]: e.target.value.toUpperCase()
+                            }))}
+                            className="text-xs border rounded px-2 py-1 w-24"
+                          />
+                          <button
+                            onClick={() => handleStatusUpdate(elective.id, 'APPROVED')}
+                            disabled={updating === elective.id}
+                            className="bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700 disabled:bg-gray-400"
+                          >
+                            {updating === elective.id ? 'Processing...' : 'Approve'}
+                          </button>
+                        </div>
                       )}
                       {elective.status === 'APPROVED' && (
                         <button

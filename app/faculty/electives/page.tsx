@@ -20,21 +20,30 @@ interface Course {
   courseCode: string
 }
 
+interface Session {
+  id: string
+  name: string
+  maxElectives: number
+  isActive: boolean
+}
+
 interface ElectiveCourse {
   id: string
   courseName: string
-  courseCode: string
+  courseCode?: string
   description: string
   credits: number
   status: string
   createdAt: string
   updatedAt: string
   faculty: Faculty
+  session: Session
   course?: Course
 }
 
 export default function FacultyElectivesPage() {
   const [electives, setElectives] = useState<ElectiveCourse[]>([])
+  const [sessions, setSessions] = useState<Session[]>([])
   const [showForm, setShowForm] = useState(false)
   const [editingElective, setEditingElective] = useState<ElectiveCourse | null>(null)
   const [loading, setLoading] = useState(true)
@@ -42,8 +51,8 @@ export default function FacultyElectivesPage() {
   const [deleting, setDeleting] = useState<string | null>(null)
   const [user, setUser] = useState<any>(null)
   const [formData, setFormData] = useState({
+    sessionId: '',
     courseName: '',
-    courseCode: '',
     description: '',
     credits: ''
   })
@@ -63,18 +72,29 @@ export default function FacultyElectivesPage() {
     }
     
     setUser(parsedUser)
-    fetchElectives(parsedUser.id)
+    fetchData(parsedUser.id)
   }, [router])
 
-  const fetchElectives = async (facultyId: string) => {
+  const fetchData = async (facultyId: string) => {
     try {
-      const response = await fetch(`/api/faculty/electives?facultyId=${facultyId}`)
-      if (response.ok) {
-        const data = await response.json()
-        setElectives(data)
+      const [electivesResponse, sessionsResponse] = await Promise.all([
+        fetch(`/api/faculty/electives?facultyId=${facultyId}`),
+        fetch(`/api/faculty/sessions?facultyId=${facultyId}`)
+      ])
+      
+      if (electivesResponse.ok) {
+        const electivesData = await electivesResponse.json()
+        setElectives(electivesData)
+      }
+      
+      if (sessionsResponse.ok) {
+        const sessionsData = await sessionsResponse.json()
+        // Extract unique sessions from sessionFaculties
+        const uniqueSessions = sessionsData.map((sf: any) => sf.session)
+        setSessions(uniqueSessions)
       }
     } catch (error) {
-      console.error('Failed to fetch electives:', error)
+      console.error('Failed to fetch data:', error)
     } finally {
       setLoading(false)
     }
@@ -104,7 +124,7 @@ export default function FacultyElectivesPage() {
 
       if (response.ok) {
         resetForm()
-        fetchElectives(user.id)
+        fetchData(user.id)
       } else {
         const error = await response.json()
         alert(error.error || `Failed to ${editingElective ? 'update' : 'create'} elective`)
@@ -118,8 +138,8 @@ export default function FacultyElectivesPage() {
 
   const resetForm = () => {
     setFormData({
+      sessionId: '',
       courseName: '',
-      courseCode: '',
       description: '',
       credits: ''
     })
@@ -134,8 +154,8 @@ export default function FacultyElectivesPage() {
     }
     
     setFormData({
+      sessionId: elective.session.id,
       courseName: elective.courseName,
-      courseCode: elective.courseCode,
       description: elective.description,
       credits: elective.credits.toString()
     })
@@ -153,7 +173,7 @@ export default function FacultyElectivesPage() {
       })
 
       if (response.ok) {
-        fetchElectives(user.id)
+        fetchData(user.id)
       } else {
         const error = await response.json()
         alert(error.error || 'Failed to delete elective')
@@ -211,8 +231,32 @@ export default function FacultyElectivesPage() {
             <h2 className="text-lg font-medium mb-4">
               {editingElective ? 'Edit Elective Proposal' : 'Propose New Elective'}
             </h2>
+            {!editingElective && (
+              <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
+                <p className="text-sm text-blue-600">
+                  Select a session to see how many elective slots you have remaining.
+                </p>
+              </div>
+            )}
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Session</label>
+                  <select
+                    required
+                    value={formData.sessionId}
+                    onChange={(e) => setFormData({ ...formData, sessionId: e.target.value })}
+                    className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
+                    disabled={!!editingElective}
+                  >
+                    <option value="">Select Session</option>
+                    {sessions.filter(s => s.isActive).map((session) => (
+                      <option key={session.id} value={session.id}>
+                        {session.name} (Max {session.maxElectives} electives)
+                      </option>
+                    ))}
+                  </select>
+                </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Course Name</label>
                   <input
@@ -222,17 +266,6 @@ export default function FacultyElectivesPage() {
                     onChange={(e) => setFormData({ ...formData, courseName: e.target.value })}
                     className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
                     placeholder="e.g., Advanced Machine Learning"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Course Code</label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.courseCode}
-                    onChange={(e) => setFormData({ ...formData, courseCode: e.target.value.toUpperCase() })}
-                    className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
-                    placeholder="e.g., CS501"
                   />
                 </div>
               </div>
@@ -292,10 +325,15 @@ export default function FacultyElectivesPage() {
                     <div className="flex-1">
                       <div className="flex items-center space-x-2 mb-2">
                         <h3 className="text-lg font-medium text-gray-900">{elective.courseName}</h3>
-                        <span className="text-sm text-gray-500">({elective.courseCode})</span>
+                        {elective.courseCode && (
+                          <span className="text-sm text-gray-500">({elective.courseCode})</span>
+                        )}
                         <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(elective.status)}`}>
                           {elective.status}
                         </span>
+                      </div>
+                      <div className="text-sm text-gray-500 mb-2">
+                        Session: {elective.session.name}
                       </div>
                       <p className="text-sm text-gray-600 mb-2">{elective.description}</p>
                       <div className="flex items-center space-x-4 text-xs text-gray-500">

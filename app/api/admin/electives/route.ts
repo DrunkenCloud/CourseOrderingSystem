@@ -5,10 +5,14 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const status = searchParams.get('status')
+    const sessionId = searchParams.get('sessionId')
     
-    let whereClause = {}
+    let whereClause: any = {}
     if (status && ['PENDING', 'APPROVED', 'REJECTED'].includes(status)) {
-      whereClause = { status }
+      whereClause.status = status
+    }
+    if (sessionId) {
+      whereClause.sessionId = sessionId
     }
     
     const electives = await prisma.electiveCourse.findMany({
@@ -19,6 +23,7 @@ export async function GET(request: NextRequest) {
             position: true
           }
         },
+        session: true,
         course: true
       },
       orderBy: [

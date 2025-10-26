@@ -161,6 +161,7 @@ async function main() {
             details: 'Faculty course preferences for Fall 2024 semester',
             isActive: true,
             maxCourses: 4,
+            maxElectives: 2,
         },
     })
 
@@ -173,6 +174,7 @@ async function main() {
             details: 'Faculty course preferences for Spring 2025 semester',
             isActive: false,
             maxCourses: 3,
+            maxElectives: 1,
         },
     })
 
