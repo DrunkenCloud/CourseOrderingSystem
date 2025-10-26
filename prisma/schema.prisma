@@ -1,0 +1,145 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Admin {
+  id        String   @id @default(uuid())
+  name      String
+  email     String   @unique
+  password  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Session {
+  id         String   @id @default(uuid())
+  name       String
+  details    String?
+  isActive   Boolean  @default(true)
+  maxCourses Int      @default(5) // Maximum number of courses faculty can select
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  // Relations
+  sessionCourses   SessionCourse[]
+  sessionFaculties SessionFaculty[]
+}
+
+model Course {
+  id         String   @id @default(uuid())
+  courseName String
+  courseCode String   @unique
+  details    String?
+  credits    Int
+  isElective Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  // Relations
+  sessionCourses  SessionCourse[]
+  courseChoices   CourseChoice[]
+  electiveCourses ElectiveCourse[]
+}
+
+// Junction table for Session-Course relationship (admin adds courses to sessions)
+model SessionCourse {
+  id        String   @id @default(uuid())
+  sessionId String
+  courseId  String
+  addedAt   DateTime @default(now())
+
+  // Relations
+  session       Session        @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  course        Course         @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  courseChoices CourseChoice[]
+
+  @@unique([sessionId, courseId])
+}
+
+model Position {
+  id         String   @id @default(uuid())
+  name       String   @unique
+  details    String?
+  minCredits Int
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  // Relations
+  faculties Faculty[]
+}
+
+model Faculty {
+  id         String   @id @default(uuid())
+  name       String
+  email      String   @unique
+  password   String
+  positionId String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  // Relations
+  position         Position         @relation(fields: [positionId], references: [id])
+  sessionFaculties SessionFaculty[]
+  electiveCourses  ElectiveCourse[]
+}
+
+// Junction table for Faculty-Session relationship (admin manually adds faculty to sessions)
+model SessionFaculty {
+  id        String   @id @default(uuid())
+  sessionId String
+  facultyId String
+  addedAt   DateTime @default(now())
+
+  // Relations
+  session Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  faculty Faculty @relation(fields: [facultyId], references: [id], onDelete: Cascade)
+
+  // Course choices for this faculty in this session
+  courseChoices CourseChoice[]
+
+  @@unique([sessionId, facultyId])
+}
+
+// Faculty's course choices with ordering
+model CourseChoice {
+  id               String   @id @default(uuid())
+  sessionFacultyId String
+  sessionCourseId  String
+  preferenceOrder  Int // 1 = first choice, 2 = second choice, etc.
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  // Relations
+  sessionFaculty SessionFaculty @relation(fields: [sessionFacultyId], references: [id], onDelete: Cascade)
+  sessionCourse  SessionCourse  @relation(fields: [sessionCourseId], references: [id], onDelete: Cascade)
+  Course         Course?        @relation(fields: [courseId], references: [id])
+  courseId       String?
+
+  @@unique([sessionFacultyId, sessionCourseId])
+  @@unique([sessionFacultyId, preferenceOrder])
+}
+
+// Elective courses proposed by faculty
+model ElectiveCourse {
+  id          String   @id @default(uuid())
+  facultyId   String
+  courseId    String? // Optional: link to existing course if approved
+  courseName  String
+  courseCode  String
+  description String
+  credits     Int
+  status      String   @default("PENDING") // PENDING, APPROVED, REJECTED
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  faculty Faculty @relation(fields: [facultyId], references: [id], onDelete: Cascade)
+  course  Course? @relation(fields: [courseId], references: [id])
+
+  @@unique([facultyId, courseCode])
+}
